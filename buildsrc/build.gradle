@@ -1,0 +1,14 @@
+apply plugin: 'groovy'
+
+dependencies {
+    compile gradleApi()
+    compile localGroovy()
+    compile 'com.android.tools.build:gradle:2.2.2'
+    compile 'org.ow2.asm:asm:5.0.3'
+    compile 'org.ow2.asm:asm-commons:5.0.3'
+}
+
+repositories {
+    jcenter()
+}
+//发布到jcentr请参照：http://blog.csdn.net/sbsujjbcy/article/details/50782830

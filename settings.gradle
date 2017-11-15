@@ -1,0 +1,3 @@
+println '============== setting build.gradle start ========'
+include ':app', ':router', ':buildsrc', ':neacymodule', ':neacymodule2', ':router_annotation'//, ':neacy_plugin'
+println '============== setting build.gradle end ========'

@@ -1,0 +1,80 @@
+apply plugin: 'com.android.application'
+apply plugin: com.neacy.plugin.NeacyPlugin
+println '============== app build.gradle start ========'
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.3"
+    defaultConfig {
+        applicationId "com.neacy.router"
+        minSdkVersion 19
+        targetSdkVersion 25
+        versionCode 1
+        versionName "1.0"
+
+        jackOptions {
+            enabled false
+        }
+        multiDexEnabled true
+    }
+
+    signingConfigs {
+        debug {
+
+        }
+        release {
+            storeFile file(RELEASE_STORE_FILE)
+            storePassword RELEASE_KEY_PASSWORD
+            keyAlias RELEASE_KEY_ALIAS
+            keyPassword RELEASE_STORE_PASSWORD
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // 指定编译版本
+//    compileOptions{
+//        targetCompatibility = JavaVersion.VERSION_1_8
+//        sourceCompatibility = JavaVersion.VERSION_1_8
+//    }
+
+    dexOptions {
+        javaMaxHeapSize "4g"
+    }
+
+    lintOptions {
+        checkReleaseBuilds false
+        // Or, if you prefer, you can continue to check for errors in release builds,
+        // but continue the build even when errors are found:
+        abortOnError false
+    }
+}
+
+//configurations.all {
+//    resolutionStrategy {
+////        forcedModules = [
+////                "com.android.tools.external.com-intellij:uast:145.595.3"
+////        ]
+//        exclude group: 'org.jetbrains', module: 'annotations'
+//    }
+//}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile 'com.android.support:appcompat-v7:25.3.1'
+    compile 'com.android.support.constraint:constraint-layout:1.0.2'
+    compile 'com.android.support:design:25.3.1'
+
+
+    compile project(':router')
+    compile project(':neacymodule')
+    compile project(':neacymodule2')
+
+//    compile project(path: ':buildsrc')
+}
+println '============== app build.gradle end ========'
