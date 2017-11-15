@@ -47,5 +47,3 @@ NeacyRouterManager.getInstance().startIntent(TestActivity.this, "Neacy://neacymo
 <https://github.com/JeasonWong/CostTime/>
 
 
-# License
-Null...
