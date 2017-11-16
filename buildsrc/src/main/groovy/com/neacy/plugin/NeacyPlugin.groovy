@@ -5,6 +5,7 @@ import com.android.build.gradle.AppExtension
 import com.android.build.gradle.internal.pipeline.TransformManager
 import com.neacy.asm.NeacyAsmVisitor
 import com.neacy.asm.NeacyRouterWriter
+import com.neacy.extension.NeacyExtension
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
@@ -25,17 +26,38 @@ import java.util.zip.ZipEntry
 public class NeacyPlugin extends Transform implements Plugin<Project> {
 
     private static final String PLUGIN_NAME = "NeacyPlugin"
+    private static final String DEBUG = "debug"
 
     private Project project
-
     private HashMap<String, String> protocols = new HashMap<>()
+
+    /**
+     * 是否是debug的模式: debug模式才会统计耗时
+     */
+    private boolean isDebug
 
     @Override
     void apply(Project project) {
         this.project = project
+        project.extensions.create("neacy", NeacyExtension, project)
 
         def android = project.extensions.getByType(AppExtension);
         android.registerTransform(this)
+
+
+        project.afterEvaluate {
+            def extension = project.extensions.findByName("neacy") as NeacyExtension
+            def debugOn = extension.debugOn
+
+            project.logger.error '========= debugOn = ' + debugOn
+
+            project.android.applicationVariants.each { varient ->
+                project.logger.error '======== varient Name = ' + varient.name
+                if (varient.name.contains(DEBUG) && debugOn) {
+                    isDebug = true
+                }
+            }
+        }
     }
 
     @Override
@@ -79,13 +101,15 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
                             // 扫描协议注解 NeacyProtocol
                             resolveClassVisitor(classVisitor)
 
-                            // 扫描耗时注解 NeacyCost
-                            byte[] bytes = classWriter.toByteArray()
-                            File destFile = new File(file.parentFile.absoluteFile, name)
-                            project.logger.debug "========== 重新写入的位置->lastFilePath = " + destFile.getAbsolutePath()
-                            FileOutputStream fileOutputStream = new FileOutputStream(destFile)
-                            fileOutputStream.write(bytes)
-                            fileOutputStream.close()
+                            if (isDebug) {// 只有Debug才进行扫描const耗时
+                                // 扫描耗时注解 NeacyCost
+                                byte[] bytes = classWriter.toByteArray()
+                                File destFile = new File(file.parentFile.absoluteFile, name)
+                                project.logger.debug "========== 重新写入的位置->lastFilePath = " + destFile.getAbsolutePath()
+                                FileOutputStream fileOutputStream = new FileOutputStream(destFile)
+                                fileOutputStream.write(bytes)
+                                fileOutputStream.close()
+                            }
                         }
                     }
                 }
@@ -97,24 +121,31 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
             input.jarInputs.each { JarInput jarInput ->
                 project.logger.error "========= jarInput.file = " + jarInput.file
                 File tempFile = null
-                if (jarInput.file.getAbsolutePath().endsWith(".jar")) {
-                    // 将jar包解压后重新打包的路径
-                    tempFile = new File(jarInput.file.getParent() + File.separator + "neacy_const.jar")
-                    if (tempFile.exists()) {
-                        tempFile.delete()
+                FileOutputStream fos = null
+                JarOutputStream jarOutputStream = null
+                String filePath = jarInput.file.getAbsolutePath()
+                if (filePath.endsWith(".jar")
+                        /*= 跳过Android自带的包 =*/
+                        && !filePath.contains("com.android.support")
+                        && !filePath.contains("/com/android/support")) {
+
+                    if (isDebug) {
+                        // 将jar包解压后重新打包的路径
+                        tempFile = new File(jarInput.file.getParent() + File.separator + "neacy_const.jar")
+                        if (tempFile.exists()) {
+                            tempFile.delete()
+                        }
+                        fos = new FileOutputStream(tempFile)
+                        jarOutputStream = new JarOutputStream(fos)
                     }
-                    FileOutputStream fos = new FileOutputStream(tempFile)
-                    JarOutputStream jarOutputStream = new JarOutputStream(fos)
 
                     JarFile jarFile = new JarFile(jarInput.file)
                     Enumeration enumeration = jarFile.entries()
                     while (enumeration.hasMoreElements()) {
                         JarEntry jarEntry = (JarEntry) enumeration.nextElement()
                         String entryName = jarEntry.getName()
-                        ZipEntry zipEntry = new ZipEntry(entryName)
                         project.logger.debug "========= jarInput class entryName = " + entryName
                         if (entryName.endsWith(".class")) {
-                            jarOutputStream.putNextEntry(zipEntry)
                             InputStream inputStream = jarFile.getInputStream(jarEntry)
                             //class文件处理
                             ClassReader classReader = new ClassReader(IOUtils.toByteArray(inputStream))
@@ -125,17 +156,23 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
                             // 扫描协议注解 NeacyProtocol
                             resolveClassVisitor(cv)
 
-                            // 扫描耗时注解 NeacyCost
-                            byte[] bytes = classWriter.toByteArray()
-                            jarOutputStream.write(bytes)
+                            if (isDebug) {
+                                ZipEntry zipEntry = new ZipEntry(entryName)
+                                jarOutputStream.putNextEntry(zipEntry)
+                                // 扫描耗时注解 NeacyCost
+                                byte[] bytes = classWriter.toByteArray()
+                                jarOutputStream.write(bytes)
+                            }
                             inputStream.close()
                         }
                     }
 
                     //结束
-                    jarOutputStream.closeEntry()
-                    jarOutputStream.close()
-                    fos.close()
+                    if (fos != null) {
+                        jarOutputStream.closeEntry()
+                        jarOutputStream.close()
+                        fos.close()
+                    }
                     jarFile.close()
                 }
 
