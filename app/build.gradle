@@ -82,3 +82,14 @@ dependencies {
 }
 
 println '============== app build.gradle end ========'
+
+
+//def aClosure = { name ->
+//    println "this is $name"
+//}
+//
+//task testClosure {
+//    doFirst {
+//        aClosure('Neacy')
+//    }
+//}

@@ -6,6 +6,7 @@ import com.android.build.gradle.internal.pipeline.TransformManager
 import com.neacy.asm.NeacyAsmVisitor
 import com.neacy.asm.NeacyRouterWriter
 import com.neacy.extension.NeacyExtension
+import groovy.util.slurpersupport.GPathResult
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
@@ -35,6 +36,7 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
      * 是否是debug的模式: debug模式才会统计耗时
      */
     private boolean isDebug
+    private String applicationName
 
     @Override
     void apply(Project project) {
@@ -49,12 +51,41 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
             def extension = project.extensions.findByName("neacy") as NeacyExtension
             def debugOn = extension.debugOn
 
-            project.logger.error '========= debugOn = ' + debugOn
-
-            project.android.applicationVariants.each { varient ->
-                project.logger.error '======== varient Name = ' + varient.name
-                if (varient.name.contains(DEBUG) && debugOn) {
+            project.android.applicationVariants.each { variant ->
+                /**
+                 * 此处对应的variant为build.gradle中配置的总数 均会遍历
+                 */
+                project.logger.error '======== varient Name = ' + variant.name.capitalize()
+                if (variant.name.contains(DEBUG) && debugOn) {// 方法耗时统计的时候只针对Debug模式使用
                     isDebug = true
+                }
+                project.logger.error '========= isDebug = ' + isDebug
+
+                /**
+                 * 直接解析操作
+                 */
+                def processManifestTask = project.tasks.findByName("process${variant.name.capitalize()}Manifest")
+                project.logger.error "========= processManifestTask = " + processManifestTask
+                if (processManifestTask) {
+                    File manifestFile = null
+                    processManifestTask.outputs.files.each { File file ->
+                        project.logger.error "======== manifestFile = " + file
+                        if (!file.absolutePath.contains("instant-run") // Instant-run生成的文件不一定存在 排除
+                                && file.absolutePath.endsWith("AndroidManifest.xml")) {
+                            manifestFile = file
+                        }
+                    }
+                    if (manifestFile != null && manifestFile.exists()) {
+                        GPathResult gpathResult = new XmlSlurper().parse(manifestFile)
+                        applicationName = gpathResult.application["@android:name"]
+                        //com.neacy.router.RouterApplication
+                        if (applicationName != null && !applicationName.equals("")) {
+                            // 因为读取到的是 . 而transform中的操作是 / 所以取名字就好
+                            String[] names = applicationName.split("\\.")
+                            applicationName = names[names.length - 1]
+                        }
+                        project.logger.error "======== application = " + applicationName
+                    }
                 }
             }
         }
@@ -80,10 +111,40 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
         return true
     }
 
+    /**
+     * 应该忽略的class
+     */
+    private boolean isIgonre(String name) {
+        return (!name.endsWith("R.class")
+                && !name.endsWith("BuildConfig.class")
+                && !name.contains("R\$")
+        )
+    }
+
+    /**
+     * 存放到HashMap中.
+     */
+    private void resolveClassVisitor(NeacyAsmVisitor cv) {
+        if (cv.mProtocolAnnotation != null) {
+            String key = cv.mProtocolAnnotation.annotationValue
+            String value = cv.protocolActivityName
+            protocols.put(key, value)
+        }
+    }
+
+    /**
+     * 路由HashMap一遍生成路由表
+     */
+    private void parseProcotolClassVisitor(NeacyAsmVisitor classVisitor) {
+        if (!name.contains(applicationName)) {
+            resolveClassVisitor(classVisitor)
+        }
+    }
+
     @Override
     void transform(Context context, Collection<TransformInput> inputs, Collection<TransformInput> referencedInputs, TransformOutputProvider outputProvider, boolean isIncremental) throws IOException, TransformException, InterruptedException {
         long startTime = System.currentTimeMillis()
-        project.logger.info "========== NeacyPlugin transform start ==========="
+        project.logger.error "========== NeacyPlugin transform start ==========="
 
         inputs.each { TransformInput input ->
             input.directoryInputs.each { DirectoryInput directoryInput ->
@@ -91,21 +152,20 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
                 if (directoryInput.file.isDirectory()) {
                     directoryInput.file.eachFileRecurse { File file ->
                         def name = file.name
-                        project.logger.debug "========== directoryInput file name = " + file
-                        if (name.endsWith(".class") && !name.endsWith("R.class")
-                                && !name.endsWith("BuildConfig.class") && !name.contains("R\$")) {
+                        project.logger.error "========== directoryInput file name = " + file
+                        if (name.endsWith(".class") && isIgonre(name)) {
                             ClassReader classReader = new ClassReader(file.bytes)
                             ClassWriter classWriter = new ClassWriter(classReader, ClassWriter.COMPUTE_MAXS)
                             NeacyAsmVisitor classVisitor = new NeacyAsmVisitor(Opcodes.ASM5, classWriter)
                             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES)
                             // 扫描协议注解 NeacyProtocol
-                            resolveClassVisitor(classVisitor)
+                            parseProcotolClassVisitor(classVisitor)
 
                             if (isDebug) {// 只有Debug才进行扫描const耗时
                                 // 扫描耗时注解 NeacyCost
                                 byte[] bytes = classWriter.toByteArray()
                                 File destFile = new File(file.parentFile.absoluteFile, name)
-                                project.logger.debug "========== 重新写入的位置->lastFilePath = " + destFile.getAbsolutePath()
+                                project.logger.error "========== 重新写入的位置->lastFilePath = " + destFile.getAbsolutePath()
                                 FileOutputStream fileOutputStream = new FileOutputStream(destFile)
                                 fileOutputStream.write(bytes)
                                 fileOutputStream.close()
@@ -144,8 +204,8 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
                     while (enumeration.hasMoreElements()) {
                         JarEntry jarEntry = (JarEntry) enumeration.nextElement()
                         String entryName = jarEntry.getName()
-                        project.logger.debug "========= jarInput class entryName = " + entryName
-                        if (entryName.endsWith(".class")) {
+                        project.logger.error "========= jarInput class entryName = " + entryName
+                        if (entryName.endsWith(".class") && isIgonre(name)) {
                             InputStream inputStream = jarFile.getInputStream(jarEntry)
                             //class文件处理
                             ClassReader classReader = new ClassReader(IOUtils.toByteArray(inputStream))
@@ -154,7 +214,7 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
                             classReader.accept(cv, ClassReader.EXPAND_FRAMES)
 
                             // 扫描协议注解 NeacyProtocol
-                            resolveClassVisitor(cv)
+                            parseProcotolClassVisitor(cv)
 
                             if (isDebug) {
                                 ZipEntry zipEntry = new ZipEntry(entryName)
@@ -200,7 +260,7 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
          */
         NeacyRouterWriter neacyRouterWriter = new NeacyRouterWriter()
         File meta_file = outputProvider.getContentLocation("neacy", getOutputTypes(), getScopes(), Format.JAR)
-        project.logger.debug "======== neacy_file = " + meta_file
+        project.logger.error "======== neacy_file = " + meta_file
         if (!meta_file.getParentFile().exists()) {
             meta_file.getParentFile().mkdirs()
         }
@@ -217,18 +277,7 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
         jarOutputStream.close()
         fos.close()
 
-        project.logger.info "========== NeacyPlugin transform const time (${System.currentTimeMillis() - startTime} ms) ==========="
-        project.logger.info "================== NeacyPlugin transform end ==================="
-    }
-
-    /**
-     * 存放到HashMap中.
-     */
-    private void resolveClassVisitor(NeacyAsmVisitor cv) {
-        if (cv.mProtocolAnnotation != null) {
-            String key = cv.mProtocolAnnotation.annotationValue
-            String value = cv.protocolActivityName
-            protocols.put(key, value)
-        }
+        project.logger.error "========== NeacyPlugin transform const time (${System.currentTimeMillis() - startTime} ms) ==========="
+        project.logger.error "================== NeacyPlugin transform end ==================="
     }
 }

@@ -67,5 +67,9 @@ public class NeacyAsmVisitor extends ClassVisitor {
     public void visitEnd() {
         super.visitEnd();
         NeacyLog.log("====== NeacyAsmVisitor visitEnd ======");
+        NeacyLog.log(".");
+        NeacyLog.log(".");
+        NeacyLog.log(".");
+        NeacyLog.log(".");
     }
 }
