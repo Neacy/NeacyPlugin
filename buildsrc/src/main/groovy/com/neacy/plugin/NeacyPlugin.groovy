@@ -12,6 +12,9 @@ import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
+import org.gradle.api.execution.TaskExecutionListener
+import org.gradle.api.tasks.TaskState
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
@@ -43,8 +46,9 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
         this.project = project
         project.extensions.create("neacy", NeacyExtension, project)
 
-        def android = project.extensions.getByType(AppExtension);
-        android.registerTransform(this)
+//        def android = project.extensions.getByType(AppExtension)
+//        android.registerTransform(this)
+        project.gradle.addListener(new NeacyTaskListener())
 
 
         project.afterEvaluate {
@@ -88,6 +92,22 @@ public class NeacyPlugin extends Transform implements Plugin<Project> {
                     }
                 }
             }
+        }
+    }
+
+    public class NeacyTaskListener implements TaskExecutionListener {
+
+        @Override
+        void beforeExecute(Task task) {
+            project.logger.error "、、、、 、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、"
+            project.logger.error "---- NeacyTaskListener beforeExecute = ${task.getName()}"
+        }
+
+        @Override
+        void afterExecute(Task task, TaskState taskState) {
+            project.logger.error "、、、、 、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、、"
+            project.logger.error "         "
+            project.logger.error "         "
         }
     }
 

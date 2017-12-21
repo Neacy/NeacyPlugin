@@ -1,8 +1,14 @@
 apply plugin: 'com.android.application'
-apply plugin: com.neacy.plugin.NeacyPlugin
-neacy {
-    debugOn true
+apply plugin: com.neacy.plugin.NeacyClassPlacePlugin
+
+neacyPlace {
+    files file('src/config.txt')
 }
+
+//apply plugin: com.neacy.plugin.NeacyPlugin
+//neacy {
+//    debugOn true
+//}
 println '============== app build.gradle start ========'
 android {
     compileSdkVersion 25
@@ -33,6 +39,9 @@ android {
     }
 
     buildTypes {
+        debug {
+
+        }
         release {
             minifyEnabled true
             signingConfig signingConfigs.release
@@ -41,10 +50,10 @@ android {
     }
 
     // 指定编译版本
-//    compileOptions{
-//        targetCompatibility = JavaVersion.VERSION_1_8
-//        sourceCompatibility = JavaVersion.VERSION_1_8
-//    }
+    compileOptions{
+        targetCompatibility = JavaVersion.VERSION_1_7
+        sourceCompatibility = JavaVersion.VERSION_1_7
+    }
 
     dexOptions {
         javaMaxHeapSize "4g"
@@ -81,15 +90,21 @@ dependencies {
 //    compile project(path: ':buildsrc')
 }
 
+println '=== getProjectDir = ' + getProjectDir().toPath().toString()
+beforeEvaluate {
+    println "====== beforeEvaluate ======"
+}
+
+afterEvaluate {
+    println "====== afterEvaluate ======"
+    getChildProjects().forEach{key, value ->
+        println '=== forEach key = ' + key
+        println '=== forEach value = ' + value.getProjectDir().toPath().toString();
+    }
+}
+
+android.applicationVariants.all{
+
+}
+
 println '============== app build.gradle end ========'
-
-
-//def aClosure = { name ->
-//    println "this is $name"
-//}
-//
-//task testClosure {
-//    doFirst {
-//        aClosure('Neacy')
-//    }
-//}

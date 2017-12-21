@@ -1,3 +1,7 @@
-println '============== setting build.gradle start ========'
+//首先setting.gradle这个gradle文件第一个执行
+
+println '============== setting.gradle start ========'
 include ':app', ':router', ':buildsrc', ':neacymodule', ':neacymodule2', ':router_annotation'//, ':neacy_plugin'
-println '============== setting build.gradle end ========'
+println '============== setting.gradle end ========'
+println ''
+println ''

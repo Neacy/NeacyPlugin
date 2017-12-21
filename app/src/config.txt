@@ -1,0 +1,1 @@
+neacy/neacymodule/LastLogger.class:/Users/jayu/Documents/Github/NeacyPlugin/app/src/main/java/com/neacy/router/LastLogger.class

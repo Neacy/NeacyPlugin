@@ -1,8 +1,9 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
-
+// 执行完setting.gradle之后就会执行根目录下的gradle
+println '========== root/build.gradle start ========'
 buildscript {
 
-    repositories {
+    repositories {//  这个repository意思是 在这个buildscript中的dependencies会从这里download
         jcenter()
     }
     dependencies {
@@ -13,7 +14,7 @@ buildscript {
     }
 }
 
-allprojects {
+allprojects {// 配置全局的仓库
     repositories {
         jcenter()
     }
@@ -27,3 +28,7 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+println '========== root/build.gradle end ========'
+println ''
+println ''
+println ''
