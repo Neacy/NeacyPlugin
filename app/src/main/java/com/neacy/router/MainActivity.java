@@ -1,5 +1,6 @@
 package com.neacy.router;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
@@ -11,6 +12,7 @@ import android.view.View;
 import com.neacy.annotation.NeacyCost;
 import com.neacy.annotation.NeacyProtocol;
 
+import neacy.neacymodule2.TestActivity;
 import neacy.router.NeacyRouterManager;
 
 @NeacyProtocol("Neacy://app/MainActivity")
@@ -34,10 +36,11 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-//                Intent intent = new Intent(MainActivity.this, TestActivity.class);
-//                startActivity(intent);
+                Intent intent = new Intent(MainActivity.this, TestActivity.class);
+                startActivity(intent);
 
-                neacy.neacymodule.LastLogger.printLog();
+                // 如果想要调试class替换的话  打开注释 以及app/build.gradle中相对应的插件声明
+//                neacy.neacymodule.LastLogger.printLog();
             }
         });
     }

@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
-apply plugin: com.neacy.plugin.NeacyClassPlacePlugin
-
-neacyPlace {
-    files file('src/config.txt')
-}
-
-//apply plugin: com.neacy.plugin.NeacyPlugin
-//neacy {
-//    debugOn true
+//apply plugin: com.neacy.plugin.NeacyClassPlacePlugin
+//
+//neacyPlace {
+//    files file('src/config.txt')
 //}
+
+apply plugin: com.neacy.plugin.NeacyPlugin
+neacy {
+    debugOn true
+}
 println '============== app build.gradle start ========'
 android {
     compileSdkVersion 25
